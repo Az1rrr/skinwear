@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 interface MaterialEntry {
   wear: string;
@@ -25,6 +26,11 @@ interface CalcInput {
   top_n: number;
 }
 
+interface CalcProgress {
+  current: number;
+  total: number;
+}
+
 interface CalculateStepProps {
   wears: string[];
   hasWear: boolean;
@@ -48,12 +54,15 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
   const [result, setResult] = useState<OptimalResult | null>(null);
   const [error, setError] = useState("");
   const [elapsed, setElapsed] = useState(0);
+  const [progress, setProgress] = useState<CalcProgress | null>(null);
   const startTime = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const unlistenRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      unlistenRef.current?.();
     };
   }, []);
 
@@ -96,11 +105,17 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
 
     setCalculating(true);
     setElapsed(0);
+    setProgress(null);
     startTime.current = Date.now();
     timerRef.current = setInterval(() => {
       setElapsed(Date.now() - startTime.current);
     }, 100);
     try {
+      const unlisten = await listen<CalcProgress>("calc-progress", (event) => {
+        setProgress(event.payload);
+      });
+      unlistenRef.current = unlisten;
+
       let res: OptimalResult;
       if (wears.length > 0) {
         res = await invoke<OptimalResult>("calculate_optimal", {
@@ -114,6 +129,8 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
           setError(`磨损数据不足（当前 ${loadedWears.length} 条，需要至少 10 条）`);
           setCalculating(false);
           if (timerRef.current) clearInterval(timerRef.current);
+          unlistenRef.current?.();
+          unlistenRef.current = null;
           return;
         }
         res = await invoke<OptimalResult>("calculate_optimal", {
@@ -125,6 +142,8 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
     } catch (e) {
       setError(String(e));
     } finally {
+      unlistenRef.current?.();
+      unlistenRef.current = null;
       setCalculating(false);
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -242,19 +261,27 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
           </div>
           <div className="w-full bg-gray-700 rounded-full h-4 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-brand-400 rounded-full animate-pulse shadow-lg shadow-brand-500/30"
-              style={{ width: "100%" }}
+              className="h-full bg-gradient-to-r from-brand-600 via-brand-500 to-brand-400 rounded-full transition-all duration-300 ease-out shadow-lg shadow-brand-500/30"
+              style={{
+                width: progress
+                  ? `${Math.round((progress.current / progress.total) * 100)}%`
+                  : "0%",
+              }}
             />
           </div>
           <div className="flex justify-between text-sm text-gray-400">
             <span>
-              枚举 C({parseInt(topN, 10) || 0}, 10) ={" "}
+              组合{" "}
               <span className="text-brand-400 font-mono font-bold">
-                {combos?.toLocaleString() ?? "?"}
+                {progress ? progress.current.toLocaleString() : 0}
               </span>{" "}
-              种组合
+              / {combos?.toLocaleString() ?? "?"}
             </span>
-            <span>请耐心等待...</span>
+            <span>
+              {progress
+                ? `${Math.round((progress.current / progress.total) * 100)}%`
+                : "准备中..."}
+            </span>
           </div>
         </div>
       )}

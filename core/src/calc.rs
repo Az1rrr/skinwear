@@ -3,7 +3,7 @@ use itertools::Itertools;
 use rust_decimal::Decimal;
 use std::str::FromStr;
 
-use crate::types::{CalcInput, MaterialEntry, OptimalResult, TargetWearResult};
+use crate::types::{CalcInput, CalcProgress, MaterialEntry, OptimalResult, TargetWearResult};
 
 /// Load wear values from raw text content (one per line).
 pub fn parse_wears(data: &str) -> Result<Vec<Decimal>> {
@@ -69,7 +69,15 @@ pub fn calculate_target(input: &CalcInput) -> Result<TargetWearResult> {
 
 /// Find optimal C(N,10) combination from wear data.
 /// `wears` should be all available wear values (the original list for position lookup).
-pub fn find_optimal(wears: &[Decimal], input: &CalcInput) -> Result<OptimalResult> {
+/// `on_progress` is called periodically with (completed, total) combination counts.
+pub fn find_optimal<F>(
+    wears: &[Decimal],
+    input: &CalcInput,
+    mut on_progress: F,
+) -> Result<OptimalResult>
+where
+    F: FnMut(CalcProgress),
+{
     validate_calc_input(input)?;
 
     let total_wears = wears.len();
@@ -95,6 +103,12 @@ pub fn find_optimal(wears: &[Decimal], input: &CalcInput) -> Result<OptimalResul
     let candidates: Vec<Decimal> = sorted.iter().take(input.top_n).map(|(_, w)| *w).collect();
     let candidate_indices: Vec<usize> = sorted.iter().take(input.top_n).map(|(i, _)| *i).collect();
 
+    // Progress reporting: total = C(top_n, 10); throttle to ~200 events max
+    let total_combos = num_combinations(candidates.len() as u64, 10);
+    let emit_step = (total_combos / 200).max(1);
+    let mut completed_combos: u64 = 0;
+    let mut last_emitted: u64 = 0;
+
     let mut best_combination: Option<Vec<Decimal>> = None;
     let mut best_indices: Option<Vec<usize>> = None;
     let mut best_deviation = Decimal::MAX;
@@ -102,6 +116,15 @@ pub fn find_optimal(wears: &[Decimal], input: &CalcInput) -> Result<OptimalResul
     let mut best_avg_t = Decimal::ZERO;
 
     for combo_indices in (0..candidates.len()).combinations(10) {
+        completed_combos += 1;
+        if completed_combos - last_emitted >= emit_step || completed_combos == total_combos {
+            last_emitted = completed_combos;
+            on_progress(CalcProgress {
+                current: completed_combos,
+                total: total_combos,
+            });
+        }
+
         let total: Decimal = combo_indices.iter().map(|&i| candidates[i]).sum();
         let avg_actual = total / Decimal::from(10u8);
         let avg_t = (avg_actual - input.input_min) / input_range;

@@ -72,3 +72,10 @@ pub struct ScrapeProgress {
     pub total_pages: usize,
     pub wears_collected: usize,
 }
+
+/// Progress event emitted during optimal combination search
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CalcProgress {
+    pub current: u64,
+    pub total: u64,
+}

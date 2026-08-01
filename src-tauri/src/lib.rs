@@ -192,12 +192,19 @@ async fn load_wears_cmd(app: AppHandle) -> Result<Vec<Decimal>, String> {
 
 #[tauri::command]
 async fn calculate_optimal(
+    app: AppHandle,
     wears: Vec<Decimal>,
     input: CalcInput,
 ) -> Result<OptimalResult, String> {
-    tauri::async_runtime::spawn_blocking(move || calc::find_optimal(&wears, &input).map_err(|e| e.to_string()))
-        .await
-        .map_err(|e| format!("计算任务失败: {e}"))?
+    let app_handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        calc::find_optimal(&wears, &input, move |progress| {
+            let _ = app_handle.emit("calc-progress", progress);
+        })
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| format!("计算任务失败: {e}"))?
 }
 
 #[tauri::command]
