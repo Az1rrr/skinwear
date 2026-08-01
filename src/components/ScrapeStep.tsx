@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 interface CookieJson {
   name: string;
   value: string;
   domain: string;
   path: string;
+}
+
+interface ScrapeProgress {
+  current_page: number;
+  total_pages: number;
+  wears_collected: number;
 }
 
 interface ScrapeStepProps {
@@ -20,6 +27,14 @@ export default function ScrapeStep({ onDone, hasWear, disabled, onBack }: Scrape
   const [pages, setPages] = useState("3");
   const [scraping, setScraping] = useState(false);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<ScrapeProgress | null>(null);
+  const unlistenRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      unlistenRef.current?.();
+    };
+  }, []);
 
   const handleScrape = async () => {
     if (!url.trim() || !pages.trim()) {
@@ -35,18 +50,29 @@ export default function ScrapeStep({ onDone, hasWear, disabled, onBack }: Scrape
 
     setScraping(true);
     setError("");
+    setProgress(null);
 
     try {
+      const unlisten = await listen<ScrapeProgress>("scrape-progress", (event) => {
+        setProgress(event.payload);
+      });
+      unlistenRef.current = unlisten;
+
       const cookies = await invoke<CookieJson[]>("load_cookies_cmd");
       await invoke<number>("start_scrape", {
         cookies,
         url: url.trim(),
         pages: pageCount,
       });
+
+      unlistenRef.current?.();
+      unlistenRef.current = null;
       onDone();
     } catch (e) {
       setError(String(e));
     } finally {
+      unlistenRef.current?.();
+      unlistenRef.current = null;
       setScraping(false);
     }
   };
@@ -128,6 +154,27 @@ export default function ScrapeStep({ onDone, hasWear, disabled, onBack }: Scrape
           </button>
         </div>
       </div>
+
+      {scraping && progress && (
+        <div className="space-y-3">
+          <div className="w-full bg-surface-400 rounded-full h-2.5 overflow-hidden">
+            <div
+              className="bg-brand-500 h-full rounded-full transition-all duration-300 ease-out"
+              style={{
+                width: `${Math.round(
+                  (progress.current_page / progress.total_pages) * 100
+                )}%`,
+              }}
+            />
+          </div>
+          <div className="flex justify-between text-sm text-gray-400">
+            <span>
+              页面 {progress.current_page} / {progress.total_pages}
+            </span>
+            <span>已收集 {progress.wears_collected} 条磨损数据</span>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-4">

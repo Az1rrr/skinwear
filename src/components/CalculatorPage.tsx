@@ -2,19 +2,19 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface TargetWearResult {
-  target_avg_t: number;
-  target_avg_actual: number;
-  target_total: number;
-  input_range: number;
-  output_range: number;
+  target_avg_t: string;
+  target_avg_actual: string;
+  target_total: string;
+  input_range: string;
+  output_range: string;
 }
 
 interface CalcInput {
-  input_max: number;
-  input_min: number;
-  output_max: number;
-  output_min: number;
-  target_wear: number;
+  input_max: string;
+  input_min: string;
+  output_max: string;
+  output_min: string;
+  target_wear: string;
   top_n: number;
 }
 
@@ -33,30 +33,30 @@ export default function CalculatorPage() {
     setResult(null);
 
     const input: CalcInput = {
-      input_max: parseFloat(inputMax),
-      input_min: parseFloat(inputMin),
-      output_max: parseFloat(outputMax),
-      output_min: parseFloat(outputMin),
-      target_wear: parseFloat(targetWear),
+      input_max: inputMax,
+      input_min: inputMin,
+      output_max: outputMax,
+      output_min: outputMin,
+      target_wear: targetWear,
       top_n: 10, // unused for target calc
     };
 
     if (
-      isNaN(input.input_max) ||
-      isNaN(input.input_min) ||
-      isNaN(input.output_max) ||
-      isNaN(input.output_min) ||
-      isNaN(input.target_wear)
+      isNaN(parseFloat(input.input_max)) ||
+      isNaN(parseFloat(input.input_min)) ||
+      isNaN(parseFloat(input.output_max)) ||
+      isNaN(parseFloat(input.output_min)) ||
+      isNaN(parseFloat(input.target_wear))
     ) {
       setError("请填写所有磨损范围参数");
       return;
     }
 
-    if (input.input_max <= input.input_min) {
+    if (parseFloat(input.input_max) <= parseFloat(input.input_min)) {
       setError("素材最高磨损必须大于最低磨损");
       return;
     }
-    if (input.output_max <= input.output_min) {
+    if (parseFloat(input.output_max) <= parseFloat(input.output_min)) {
       setError("产物最高磨损必须大于最低磨损");
       return;
     }
@@ -129,7 +129,7 @@ export default function CalculatorPage() {
             <div className="text-center py-4">
               <p className="text-xs text-gray-500 mb-2">目标材料平均磨损</p>
               <p className="text-4xl font-bold text-brand-400 font-mono">
-                {result.target_avg_actual.toString()}
+                {result.target_avg_actual}
               </p>
             </div>
 
@@ -138,7 +138,7 @@ export default function CalculatorPage() {
                 公式：成品 = avg(t.float) × (output_max − output_min) + output_min
               </p>
               <p>
-                t.float = {result.target_avg_t.toString()} ｜ ×10 总和 = {result.target_total.toString()}
+                t.float = {result.target_avg_t} ｜ ×10 总和 = {result.target_total}
               </p>
             </div>
           </div>

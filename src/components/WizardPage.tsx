@@ -13,7 +13,7 @@ interface StatusResult {
 export default function WizardPage() {
   const [status, setStatus] = useState<StatusResult>({ has_cookie: false, has_wear: false });
   const [currentStep, setCurrentStep] = useState(0);
-  const [wears, setWears] = useState<number[]>([]);
+  const [wears, setWears] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [resetConfirm, setResetConfirm] = useState(false);
 
@@ -73,7 +73,7 @@ export default function WizardPage() {
   const onScrapeDone = async () => {
     setStatus((s) => ({ ...s, has_wear: true }));
     try {
-      const w = await invoke<number[]>("load_wears_cmd");
+      const w = await invoke<string[]>("load_wears_cmd");
       setWears(w);
     } catch (e) {
       console.error("Failed to load wears:", e);

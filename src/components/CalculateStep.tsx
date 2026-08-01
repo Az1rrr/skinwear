@@ -2,31 +2,31 @@ import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface MaterialEntry {
-  wear: number;
+  wear: string;
   page: number;
   row: number;
 }
 
 interface OptimalResult {
-  output_wear: number;
-  deviation: number;
-  avg_actual: number;
-  avg_t: number;
+  output_wear: string;
+  deviation: string;
+  avg_actual: string;
+  avg_t: string;
   materials: MaterialEntry[];
-  wear_values: number[];
+  wear_values: string[];
 }
 
 interface CalcInput {
-  input_max: number;
-  input_min: number;
-  output_max: number;
-  output_min: number;
-  target_wear: number;
+  input_max: string;
+  input_min: string;
+  output_max: string;
+  output_min: string;
+  target_wear: string;
   top_n: number;
 }
 
 interface CalculateStepProps {
-  wears: number[];
+  wears: string[];
   hasWear: boolean;
   onBack: () => void;
   onBackToCookie: () => void;
@@ -62,30 +62,30 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
     setResult(null);
 
     const input: CalcInput = {
-      input_max: parseFloat(inputMax),
-      input_min: parseFloat(inputMin),
-      output_max: parseFloat(outputMax),
-      output_min: parseFloat(outputMin),
-      target_wear: parseFloat(targetWear),
+      input_max: inputMax,
+      input_min: inputMin,
+      output_max: outputMax,
+      output_min: outputMin,
+      target_wear: targetWear,
       top_n: parseInt(topN, 10) || 20,
     };
 
     if (
-      isNaN(input.input_max) ||
-      isNaN(input.input_min) ||
-      isNaN(input.output_max) ||
-      isNaN(input.output_min) ||
-      isNaN(input.target_wear)
+      isNaN(parseFloat(input.input_max)) ||
+      isNaN(parseFloat(input.input_min)) ||
+      isNaN(parseFloat(input.output_max)) ||
+      isNaN(parseFloat(input.output_min)) ||
+      isNaN(parseFloat(input.target_wear))
     ) {
       setError("请填写所有磨损范围参数");
       return;
     }
 
-    if (input.input_max <= input.input_min) {
+    if (parseFloat(input.input_max) <= parseFloat(input.input_min)) {
       setError("素材最高磨损必须大于最低磨损");
       return;
     }
-    if (input.output_max <= input.output_min) {
+    if (parseFloat(input.output_max) <= parseFloat(input.output_min)) {
       setError("产物最高磨损必须大于最低磨损");
       return;
     }
@@ -109,7 +109,7 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
         });
       } else {
         // Load wears if not already loaded
-        const loadedWears = await invoke<number[]>("load_wears_cmd");
+        const loadedWears = await invoke<string[]>("load_wears_cmd");
         if (loadedWears.length < 10) {
           setError(`磨损数据不足（当前 ${loadedWears.length} 条，需要至少 10 条）`);
           setCalculating(false);
@@ -259,7 +259,7 @@ export default function CalculateStep({ wears, hasWear, onBack, onBackToCookie }
         </div>
       )}
 
-      {result && <ResultCard result={result} targetWear={parseFloat(targetWear)} />}
+      {result && <ResultCard result={result} targetWear={targetWear} />}
 
       {error && (
         <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-4">
@@ -299,7 +299,7 @@ function ResultCard({
   targetWear,
 }: {
   result: OptimalResult;
-  targetWear: number;
+  targetWear: string;
 }) {
   return (
     <div className="bg-surface-400 border border-brand-700/50 rounded-lg p-5 space-y-3">

@@ -2,7 +2,7 @@ use anyhow::Result;
 use rust_decimal::Decimal;
 use serde::Serialize;
 use std::sync::mpsc;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use skinwear_core::calc;
 use skinwear_core::cookie;
@@ -155,8 +155,11 @@ async fn start_scrape(
 ) -> Result<usize, String> {
     let info = scrape::parse_goods_url(&url).map_err(|e| e.to_string())?;
 
+    let app_handle = app.clone();
     let wears = tauri::async_runtime::spawn_blocking(move || {
-        scrape::scrape(&cookies, &info, pages, |_| {})
+        scrape::scrape(&cookies, &info, pages, move |progress| {
+            let _ = app_handle.emit("scrape-progress", progress);
+        })
     })
     .await
     .map_err(|e| format!("爬取任务失败: {e}"))?
@@ -205,6 +208,7 @@ async fn calculate_target_cmd(input: CalcInput) -> Result<TargetWearResult, Stri
 #[tauri::command]
 fn ready_cmd(app: AppHandle) -> Result<(), String> {
     for (_, w) in app.webview_windows() {
+        let _ = w.center();
         let _ = w.show();
     }
     Ok(())
@@ -228,6 +232,7 @@ pub fn run() {
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_millis(800));
                 for (_, w) in handle.webview_windows() {
+                    let _ = w.center();
                     let _ = w.show();
                 }
             });
