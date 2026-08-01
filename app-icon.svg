@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="letter" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e94560"/>
+      <stop offset="100%" stop-color="#c23152"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- B letter, centered, transparent background -->
+  <text x="512" y="700" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="680" font-weight="800" text-anchor="middle"
+        fill="url(#letter)" filter="url(#glow)">B</text>
+</svg>

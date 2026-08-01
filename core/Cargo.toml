@@ -1,0 +1,13 @@
+[package]
+name = "skinwear-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+headless_chrome = "1.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rust_decimal = { version = "1.39", features = ["serde"] }
+itertools = "0.13"
+regex = "1"
+anyhow = "1"

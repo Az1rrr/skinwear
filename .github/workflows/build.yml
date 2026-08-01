@@ -1,0 +1,59 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: macOS (Apple Silicon)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build macOS
+        run: npm run tauri build -- --target aarch64-apple-darwin
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Skinwear_macOS_aarch64
+          path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+
+  build-windows:
+    name: Windows (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Windows
+        run: npm run tauri build -- --target x86_64-pc-windows-msvc
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Skinwear_Windows_x64
+          path: target/x86_64-pc-windows-msvc/release/skinwear-gui.exe
